@@ -1,0 +1,361 @@
+---
+title: "DSPG Practical Exam"
+author: "Putri Khalilah binti Kamaluddin"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+# 1. Exploring the diamonds dataset
+
+# Load the package
+
+```{r load packages, include=TRUE, message=FALSE,warning=FALSE}
+pacman::p_load(
+  tidyverse, tidymodels, here, 
+  vip, janitor, visdat, naniar, 
+  corrplot.ggplot2,dplyr,yardstick
+)
+```
+
+# Load and read the data
+```{r load data, include=TRUE}
+data <- 
+  read_rds("C:\\Users\\PUTRI KHALILAH\\Desktop\\Trimester 2 2023\\STATS 7022\\WEEK 13\\DSPG_Practical_Exam_Data.rds")
+data
+```
+# Investigating the dataset.
+The dataset has **1000** rows with 7 columns (3 characters type and 4 numerics type).
+After skimming the dataset, column **C2** has **15 missing values** and **X1** has **12 missing values**.
+X3 column should be in numeric instead of character type hence need to convert it.
+
+```{r skimming the data, echo=TRUE, include=TRUE}
+skimr::skim(data)
+```
+
+# Visualizations
+
+## Y
+
+```{r visualize on y, warning=FALSE,message=FALSE}
+data %>% ggplot(aes(Y)) + geom_histogram(col="black",fill="#3fbf7f")
+```
+Y appears to has right-skewed distribution and unimodal. Its also appears that Y has **outlier above 12.5**.
+
+## X1
+
+```{r visualize on X1,warning=FALSE,message=FALSE}
+data %>% ggplot(aes(X1)) + geom_histogram(col="black",fill="#3fbf7f")
+```
+X1 appears roughly symmetric distribution and unimodal and there is no outlier shown in the histogram.
+
+## X2
+
+```{r visualize on X2,warning=FALSE,message=FALSE}
+data %>% ggplot(aes(X2)) + geom_histogram(col="black",fill="#3fbf7f")
+```
+X2 appears to has roughly symmetric distribution and unimodal. Its also appears that X2 has **outlier below 0 at -60**.
+
+## X3
+
+```{r visualize on X3,warning=FALSE,message=FALSE}
+data %>% ggplot(aes(as.double(X3))) + geom_histogram(col="black",fill="#3fbf7f")
+```
+After  masking the X3, it is X3 appears roughly symmetric distribution and unimodal and there is no outlier shown in the histogram.
+
+## X4
+
+```{r visualize on X4,warning=FALSE,message=FALSE}
+data %>% ggplot(aes(X4)) + geom_histogram(col="black",fill="#3fbf7f")
+```
+
+X4 appears to has left-skewed distribution and unimodal and there is no obvious outlier shown in the histogram.
+
+
+## Checking for outliers
+
+```{r checking outlier}
+data %>%
+filter(Y > 12.5)
+
+data %>%
+filter(X2 < -20)
+```
+It is observed that Y column has 1 outliers  while X2 column has 5 outliers. The values were to far from the distribution
+and unlikely to be a correct value hence we can remove this from distribution during the data cleaning process.
+
+## C1
+
+```{r visualize on C1}
+data %>% ggplot(aes(C1)) + geom_bar(col="black",fill="#3fbf7f")
+
+data %>%
+filter(C1 == 'eee')
+```
+The levels of C1 seems monopolised by **a** at about **35%** of the distribution followed by b, c , d and e. **e** distribution has very small portion with **less than 1%** of the distribution.
+
+## C2
+
+```{r visualize on C2}
+data %>% ggplot(aes(C2)) + geom_bar(col="black",fill="#3fbf7f")
+
+data %>% filter(is.na(C2))
+```
+Its appear that **J** and **K** groups do not have many observations and may be worth consolidating these using step_other() functions. Its also appear there is 15 NA observations and judging by these 15 distributions, is still worth to keep it because these 15 data points are still within the rest of the data located. We can performs step impute by replacing in with highest frequency of the datapoint value.
+
+## X1 and Y
+
+```{r visualize on X1_Y,warning=FALSE,message=FALSE}
+data %>% ggplot(aes(x=X1,y=Y)) + geom_point() + 
+  geom_smooth(col="blue",method = "lm")
+```
+X1 and Y has a weak, positive, linear relationship. Its weak because the slope  of the distribution is not steep.
+
+
+## X2 and Y
+
+```{r visualize on X2_Y,warning=FALSE,message=FALSE}
+data %>% ggplot(aes(x=X2,y=Y)) + geom_point() + 
+  geom_smooth(col="blue",method = "lm")
+```
+X2 and Y has a weak, negative, linear relationship. Its weak because the slope  of the distribution is not steep.
+
+## X2 and Y
+
+```{r visualize on X2_Y_al,warning=FALSE,message=FALSE}
+data %>% filter (X2 > -20) %>% ggplot(aes(x=X2,y=Y)) + geom_point() + 
+  geom_smooth(col="blue",method = "lm")
+```
+Another angle we can see this X2 vs Y distribution after we had filtered the X2 > -20 value. The distribution seems reasonable but still hold the same notion with X2 and Y has a weak, negative, linear relationship.
+
+## X3 and Y
+
+```{r visualize on X3_Y,warning=FALSE,message=FALSE}
+data %>% ggplot(aes(x=as.double(X3),y=Y)) + geom_point() + 
+  geom_smooth(col="blue",method = "lm")
+```
+X3 and Y has a moderate, negative, linear relationship.
+
+## X4 and Y
+
+```{r visualize on X4_Y,warning=FALSE,message=FALSE}
+data %>% ggplot(aes(x=X4,y=Y)) + geom_point() + 
+  geom_smooth(col="blue",method = "lm")
+```
+X4 and Y has a moderate, negative, linear relationship.
+
+## C1 and Y
+
+```{r visualize on C1_Y}
+data %>% ggplot(aes(x=C1,y=Y,group=C1)) + geom_boxplot(col="black",fill='blue')
+```
+Level **eee** seems to have the highest mean followed by **a**, **c** ,**d** and lastly **b**. It appears all levels have outliers except for level **eee**. The width of each boxplot is roughly the same indicating  interquartile range (IQR) is relatively close to Q1 and Q3 in the distribution.
+
+
+## C2 and Y
+
+```{r visualize on C2_Y}
+data %>% ggplot(aes(x=C2,y=Y,group=C2)) + geom_boxplot(col="black",fill='blue')
+```
+
+The highest mean is level **NA**  while the rest have roughly the same median in the distribution. It appears all levels have outliers.
+
+There is no strong relationship between features and target variables. Perhaps, there is interaction between the features.
+
+## X1 and X2
+
+```{r visualize on X1_X2,warning=FALSE,message=FALSE}
+data %>% filter (X2 > -20) %>% ggplot(aes(x=X1,y=X2)) + geom_point() + 
+  geom_smooth(col="blue",method = "lm")
+```
+It appears X1 and X2 have positive and linear relationship after filtering out the X2 outliers. Could be worth to explore their interaction.
+
+# 2. Cleaning the dataset
+
+## Cleaning the level names
+Changing the level **'eee'** to **e**.
+```{r level_e}
+data <- data %>%
+  mutate(C1 = ifelse(C1 == "eee", "e", C1))
+data
+```
+
+## Changing the type.
+Changing the **X3** column type from **character** to **double**.
+```{r x3_col}
+data <- data %>%
+  mutate(X3 = as.double(X3))
+data
+```
+
+## Removing outliers
+Removing outlier based on Y and X2 columns.
+```{r remove_outliers}
+data  <- data %>%
+filter(Y < 12.5)
+
+data <- data %>%
+filter(X2 > -20)
+data
+```
+
+# 3. Data Splitting
+
+## Split the data into training and testing sets.
+Ensure that our training and testing sets are balanced according to Y, so we specify **strata = Y** 
+in the function initial_split().
+
+```{r split_data, echo=TRUE, include=TRUE}
+set.seed(2023)
+# splitting the data into testing and training set
+data_split <- initial_split(data, strata = Y)
+data_train <- training(data_split)
+data_test <- testing(data_split)
+data_cv <- vfold_cv(data_train,strata=Y)
+data_cv
+```
+# 4. Recipe
+## Pre-processing the data using recipe.
+Creating the recipe.
+```{r preprocessing, echo=TRUE, include=TRUE}
+library(recipes)
+data_recipe <- recipe (Y ~., data = data_train) %>%
+  step_impute_median(all_numeric_predictors())%>% # impute the missing value with median of each columns.
+  step_impute_mode(all_nominal_predictors()) %>%  # impute the missing value with the highest mode ie level Z will be utilised.
+  step_other(C2) %>%  #consolidate J and K.
+  step_interact(terms=~X1:X2) %>%
+  step_dummy(all_nominal_predictors()) %>%
+  step_normalize(all_predictors())
+  
+data_recipe %>% prep %>% bake(new_data = NULL)
+```
+
+# 5. Model
+## Specify the Lasso Regression model.
+In defining Lasso Regression model, we need to specify **mixture = 1**, so the Linear Regression will set up our model
+to Lasso mode. Since we are going to find the best lambda, the **penalty** will be **tuned**.
+
+```{r define lasso model, echo=TRUE, include=TRUE}
+data_lasso_model <- linear_reg(mixture = 1, penalty = tune()) %>%
+  set_engine("glmnet") %>%
+  set_mode("regression")
+```
+
+# 6. Workflow
+## Combining the model and and recipe into one workflow
+
+```{r workflow, echo=TRUE, include=TRUE}
+data_workflow <- workflow() %>%
+  add_recipe(data_recipe) %>%
+  add_model(data_lasso_model)
+data_workflow
+```
+
+# 7.Tuning
+
+## Tuning lambda using grid search
+To find the best lambda for the Lasso model, we will utilise the grid search function.
+```{r create_tune_grid ,echo=TRUE, include=TRUE}
+data_grid <- tibble(penalty = 10^seq(-6,2,0.2))
+data_grid
+```
+## Model Tuning
+
+```{r cv_grid}
+doParallel::registerDoParallel()
+data_tune_results <- tune_grid(data_workflow,
+                               resamples = data_cv,
+                               grid = data_grid)
+
+write_rds(data_tune_results,"data_tune.rds")
+
+```
+
+# 8.Result
+## Getting the result
+Choose the best model.
+```{r tuning_result}
+
+data_tune_results %>% autoplot()
+
+show_best(data_tune_results, metric = "rmse")
+
+data_hyperparams <- select_best(data_tune_results, metric = "rmse")
+data_hyperparams
+```
+## Finalising the model
+```{r finalizing_the_model}
+data_final <- data_workflow %>%
+finalize_workflow(data_hyperparams) %>%
+fit(data_train)
+data_final %>% tidy() %>% print(n = Inf)
+```
+
+## Check last fit
+
+```{r last_fit}
+data_fit <- data_final %>%
+last_fit(data_split)
+  
+data_fit %>% collect_metrics()
+```
+
+## Variable Importance
+
+```{r variable_importance}
+
+data_fit %>% extract_fit_engine() %>% vip::vip()
+```
+Seems there is interaction between **X1 and X2** features making it has the large effect on Y as does **C1**. **X4** is also contributing the effect on Y. However, **X2** alone and **C2** have negligible effect on Y.
+
+# 9. Assumption Checking
+## Linearity
+It appears the dataset has a good linearity pattern because the residuals are randomly scattered around the zero line without 
+any systematic trends, curvatures, or sudden changing in spreads. 
+
+```{r linearity}
+lm_1 <- lm(Y~.,data = data)
+plot(lm_1, which = 1)
+```
+## Homoscedasticity
+It observes a slight increase in the spread of residuals followed by a relatively constant spread around 1 (in the range of -0.5 to 1).
+The dataset still abide to homoscedasticity assumption. The residuals have a roughly constant spread around zero with few data been flagged (741,76 and 776). 
+```{r homoscedasticity}
+lm_1 <- lm(Y~.,data = data)
+plot(lm_1, which = 3)
+```
+## Normality of residuals.
+The normality assumption is evaluated based on the residuals and can be evaluated using a QQ-plot by comparing the residuals to “ideal” normal observations along the 45-degree line.
+It has flagged those same 3 data points that have large residuals (observations 741,76 and 776). However, aside from those 3 data points, observations lie well along the 45-degree line in the QQ-plot, so we may assume that normality holds here.
+
+```{r normality}
+lm_1 <- lm(Y~.,data = data)
+plot(lm_1, which = 2)
+```
+
+
+# 10. Predict
+To evaluate the model is performing well, new data point is given as input into the final model.
+```{r predict}
+new_data <- tibble(X1 = -1,
+                   X2= 0.5,
+                   X3 = 2,
+                   X4 =1,
+                   C1 ="c",
+                   C2 = "X")
+data_fit %>%
+  extract_fit_parsnip() %>%
+  predict(data_recipe %>%
+            prep() %>%
+            bake(new_data=new_data))
+```
+Plotting the Predicted values against observed (Y) values.
+```{r plotting the predict data}
+data_fit %>% collect_predictions() %>%
+  ggplot(aes(Y, .pred)) +
+  geom_point() +
+  geom_smooth(col = "#1f5f3f", method = "lm") +
+  geom_abline(intercept = 0, slope = 1) +
+  ggtitle("Predicted vs Observed") +
+  labs(x = "Observed", y = "Predicted")
+```
